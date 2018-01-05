@@ -1087,8 +1087,9 @@ class GoogleJobProvider(base.JobProvider):
                        labels=None,
                        create_time_min=None,
                        create_time_max=None,
-                       max_tasks=0):
-    """Return a list of operations based on the input criteria.
+                       max_tasks=0,
+                       page_size=256):
+    """Yields operations based on the input criteria.
 
     If any of the filters are empty or {'*'}, then no filtering is performed on
     that field. Filtering by both a job id list and job name list is
@@ -1108,12 +1109,13 @@ class GoogleJobProvider(base.JobProvider):
       create_time_max: a timezone-aware datetime value for the most recent
                        create time of a task, inclusive.
       max_tasks: the maximum number of job tasks to return or 0 for no limit.
+      page_size: the page size to use for each query to the pipelins API.
 
     Raises:
       ValueError: if both a job id list and a job name list are provided
 
-    Returns:
-      A list of Genomics API Operations objects.
+    Yeilds:
+      Genomics API Operations objects.
     """
 
     # Server-side, we can filter on status, job_id, user_id, task_id, but there
@@ -1167,16 +1169,16 @@ class GoogleJobProvider(base.JobProvider):
       # The pipelines API returns operations sorted by create-time date. We can
       # use this sorting guarantee to merge-sort the streams together and only
       # retrieve more tasks as needed.
-      stream = _Operations.list(self._service, ops_filter, page_size=max_tasks)
+      stream = _Operations.list(self._service, ops_filter, page_size=page_size)
       query_queue.add_generator(stream)
 
-    tasks = []
+    tasks_yielded = 0
     for task in query_queue:
-      tasks.append(task)
-      if 0 < max_tasks < len(tasks):
+      yield task
+      tasks_yielded += 1
+      if 0 < max_tasks < tasks_yielded:
         break
 
-    return tasks
 
   def delete_jobs(self,
                   user_ids,
@@ -1201,14 +1203,14 @@ class GoogleJobProvider(base.JobProvider):
       A list of tasks canceled and a list of error messages.
     """
     # Look up the job(s)
-    tasks = self.lookup_job_tasks(
+    tasks = list(self.lookup_job_tasks(
         {'RUNNING'},
         user_ids=user_ids,
         job_ids=job_ids,
         task_ids=task_ids,
         labels=labels,
         create_time_min=create_time_min,
-        create_time_max=create_time_max)
+        create_time_max=create_time_max))
 
     print 'Found %d tasks to delete.' % len(tasks)
 

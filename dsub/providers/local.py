@@ -410,16 +410,19 @@ class LocalJobProvider(base.JobProvider):
 
     return (canceled, cancel_errors)
 
-  def lookup_job_tasks(self,
-                       statuses,
-                       user_ids=None,
-                       job_ids=None,
-                       job_names=None,
-                       task_ids=None,
-                       labels=None,
-                       create_time_min=None,
-                       create_time_max=None,
-                       max_tasks=0):
+  def lookup_job_tasks(
+      self,
+      statuses,
+      user_ids=None,
+      job_ids=None,
+      job_names=None,
+      task_ids=None,
+      labels=None,
+      create_time_min=None,
+      create_time_max=None,
+      max_tasks=0,
+      # page_size is ignored for the LocalJobProvider
+      page_size=0):
 
     # 'OR' filtering arguments.
     statuses = None if statuses == {'*'} else statuses
